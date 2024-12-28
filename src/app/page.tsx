@@ -1,101 +1,316 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+import React, { useState, useEffect } from "react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { BookLock } from "lucide-react";
+import { decryptOnePad, encryptOnePad } from "@/lib/onePadCipher";
+import { decryptHill, encryptHill, validateKey } from "@/lib/hillCipher";
+import {
+  decryptMonoalphabetic,
+  encryptMonoalphabetic,
+} from "@/lib/monoalphabeticCipher";
+import {
+  decryptPolyalphabetic,
+  encryptPolyalphabetic,
+} from "@/lib/polyalphabeticCipher";
+import { decryptRailFence, encryptRailFence } from "@/lib/railFenceCipher";
+import { decryptPlayfair, encryptPlayfair } from "@/lib/playfairCipher";
+import {
+  decryptRowColumnTransposition,
+  encryptRowColumnTransposition,
+} from "@/lib/rowColumnTranspositionCipher";
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+const cipherDescriptions = {
+  onePad: "Encrypts each character with a unique key character.",
+  hill: "Uses matrix multiplication for encryption and decryption.",
+  monoalphabetic: "Substitutes each letter with another based on a fixed key.",
+  polyalphabetic: "Uses multiple substitution alphabets based on a keyword.",
+  railFence: "Writes the message in a zigzag pattern and reads off in rows.",
+  playfair: "Uses a 5x5 matrix of letters for encrypting pairs of letters.",
+  rowColumnTransposition: "Rearranges the order of characters based on a key.",
+};
+
+export default function CipherTool() {
+  const [selectedCipher, setSelectedCipher] = useState("onePad");
+  const [inputText, setInputText] = useState("");
+  const [dynamicKey, setDynamicKey] = useState<string | string[]>("");
+  const [result, setResult] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    setDynamicKey(selectedCipher === "hill" ? "" : "");
+  }, [selectedCipher]);
+
+  const handleEncrypt = () => {
+    setError("");
+    try {
+      let encryptedText = "";
+      switch (selectedCipher) {
+        case "onePad":
+          encryptedText = encryptOnePad(inputText, dynamicKey as string);
+          break;
+        case "hill":
+          const hillKey = (dynamicKey as string).split(",").map(Number);
+          if (!validateKey(hillKey)) {
+            throw new Error(
+              "Invalid Hill Cipher key. Please ensure it forms a valid square matrix."
+            );
+          }
+          encryptedText = encryptHill(inputText, hillKey);
+          break;
+        case "monoalphabetic":
+          encryptedText = encryptMonoalphabetic(
+            inputText,
+            dynamicKey as string
+          );
+          break;
+        case "polyalphabetic":
+          encryptedText = encryptPolyalphabetic(
+            inputText,
+            dynamicKey as string
+          );
+          break;
+        case "railFence":
+          encryptedText = encryptRailFence(
+            inputText,
+            parseInt(dynamicKey as string)
+          );
+          break;
+        case "playfair":
+          encryptedText = encryptPlayfair(inputText, dynamicKey as string);
+          break;
+        case "rowColumnTransposition":
+          encryptedText = encryptRowColumnTransposition(
+            inputText,
+            dynamicKey as string
+          );
+          break;
+      }
+      setResult(encryptedText);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  const handleDecrypt = () => {
+    setError("");
+    try {
+      let decryptedText = "";
+      switch (selectedCipher) {
+        case "onePad":
+          decryptedText = decryptOnePad(inputText, dynamicKey as string);
+          break;
+        case "hill":
+          const hillKey = (dynamicKey as string).split(",").map(Number);
+          if (!validateKey(hillKey)) {
+            throw new Error(
+              "Invalid Hill Cipher key. Please ensure it forms a valid square matrix."
+            );
+          }
+          decryptedText = decryptHill(inputText, hillKey);
+          break;
+        case "monoalphabetic":
+          decryptedText = decryptMonoalphabetic(
+            inputText,
+            dynamicKey as string
+          );
+          break;
+        case "polyalphabetic":
+          decryptedText = decryptPolyalphabetic(
+            inputText,
+            dynamicKey as string
+          );
+          break;
+        case "railFence":
+          decryptedText = decryptRailFence(
+            inputText,
+            parseInt(dynamicKey as string)
+          );
+          break;
+        case "playfair":
+          decryptedText = decryptPlayfair(inputText, dynamicKey as string);
+          break;
+        case "rowColumnTransposition":
+          decryptedText = decryptRowColumnTransposition(
+            inputText,
+            dynamicKey as string
+          );
+          break;
+      }
+      setResult(decryptedText);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  const renderKeyInput = () => {
+    switch (selectedCipher) {
+      case "onePad":
+        return (
+          <Input
+            id="key"
+            value={dynamicKey as string}
+            onChange={(e) => setDynamicKey(e.target.value)}
+            placeholder="Enter key (same length as input)"
+          />
+        );
+      case "hill":
+        return (
+          <div className="space-y-2">
+            <Input
+              id="key"
+              value={dynamicKey as string}
+              onChange={(e) => setDynamicKey(e.target.value)}
+              placeholder="Enter key numbers separated by commas (e.g., 1,2,3,4 for 2x2 matrix)"
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            <p className="text-gray-500 text-sm">
+              Enter a square matrix of numbers (e.g., 4 numbers for 2x2, 9 for
+              3x3)
+            </p>
+          </div>
+        );
+      case "monoalphabetic":
+        return (
+          <Input
+            id="key"
+            value={dynamicKey as string}
+            onChange={(e) => setDynamicKey(e.target.value)}
+            placeholder="Enter permutation of the alphabet"
+          />
+        );
+      case "polyalphabetic":
+        return (
+          <Input
+            id="key"
+            value={dynamicKey as string}
+            onChange={(e) => setDynamicKey(e.target.value)}
+            placeholder="Enter repeating key string"
+          />
+        );
+      case "railFence":
+        return (
+          <Input
+            id="key"
+            type="number"
+            value={dynamicKey as string}
+            onChange={(e) => setDynamicKey(e.target.value)}
+            placeholder="Enter number of rails"
+          />
+        );
+      case "playfair":
+        return (
+          <Input
+            id="key"
+            value={dynamicKey as string}
+            onChange={(e) => setDynamicKey(e.target.value)}
+            placeholder="Enter 5x5 matrix key"
+          />
+        );
+      case "rowColumnTransposition":
+        return (
+          <Input
+            id="key"
+            value={dynamicKey as string}
+            onChange={(e) => setDynamicKey(e.target.value)}
+            placeholder="Enter column order"
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <Card className="justify-center items-center bg-secondary/20 mx-auto w-full max-w-3xl">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-3">
+          <BookLock className="text-primary" /> Cipher Tool
+        </CardTitle>
+        <CardDescription>
+          Encrypt and decrypt messages using various cipher algorithms
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="cipher-select">Select Cipher Algorithm</Label>
+            <Select onValueChange={setSelectedCipher} value={selectedCipher}>
+              <SelectTrigger id="cipher-select">
+                <SelectValue placeholder="Select a cipher" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="onePad">One-Time Pad</SelectItem>
+                <SelectItem value="hill">Hill Cipher</SelectItem>
+                <SelectItem value="monoalphabetic">
+                  Monoalphabetic Cipher
+                </SelectItem>
+                <SelectItem value="polyalphabetic">
+                  Polyalphabetic Cipher
+                </SelectItem>
+                <SelectItem value="railFence">Rail Fence Cipher</SelectItem>
+                <SelectItem value="playfair">Playfair Cipher</SelectItem>
+                <SelectItem value="rowColumnTransposition">
+                  Row Column Transposition Cipher
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {
+            <p className="text-muted-foreground text-sm">
+              {
+                cipherDescriptions[
+                  selectedCipher as keyof typeof cipherDescriptions
+                ]
+              }
+            </p>
+          }
+
+          <div>
+            <Label htmlFor="input-text">Input Text</Label>
+            <Input
+              id="input-text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder="Enter text to encrypt or decrypt"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="key">Key</Label>
+            {renderKeyInput()}
+          </div>
+
+          <div className="flex space-x-2">
+            <Button onClick={handleEncrypt}>Encrypt</Button>
+            <Button onClick={handleDecrypt}>Decrypt</Button>
+          </div>
+
+          {error && <div className="text-red-500">{error}</div>}
+
+          {result && (
+            <div>
+              <Label htmlFor="result">Result</Label>
+              <Input id="result" value={result} readOnly />
+            </div>
+          )}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
